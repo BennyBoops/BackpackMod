@@ -1,0 +1,8 @@
+{
+  "type": "backpackmod:backpack_dye",
+  "category": "misc",
+  "dye": {
+    "item": "minecraft:green_dye"
+  },
+  "result": "backpackmod:backpack_green"
+}
