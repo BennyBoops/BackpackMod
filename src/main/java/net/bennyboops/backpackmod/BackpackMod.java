@@ -13,7 +13,6 @@ import net.minecraft.registry.Registry;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 import java.util.HashMap;
@@ -64,7 +63,7 @@ public class BackpackMod implements ModInitializer {
                     context.player().openHandledScreen(new SimpleNamedScreenHandlerFactory(
                             (syncId, playerInventory, p) ->
                                     new BackpackScreenHandler(syncId, playerInventory, chestSlot),
-                            Text.translatable("container.backpackmod.backpack")
+                            BackpackItem.getDisplayName(chestSlot)
                     ));
                 }
             });

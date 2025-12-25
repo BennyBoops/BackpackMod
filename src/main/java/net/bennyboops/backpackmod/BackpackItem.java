@@ -100,7 +100,20 @@ public class BackpackItem extends Item implements Equipment {
         return new SimpleNamedScreenHandlerFactory(
                 (syncId, playerInventory, player) ->
                         new BackpackScreenHandler(syncId, playerInventory, stack),
-                Text.translatable("container.backpackmod.backpack." + color.getName())
+                getDisplayName(stack)
         );
+    }
+
+    public static Text getDisplayName(ItemStack stack) {
+        if (stack.contains(DataComponentTypes.CUSTOM_NAME)) {
+            return stack.getName();
+        }
+
+        if (stack.getItem() instanceof BackpackItem backpackItem) {
+            return Text.translatable("container.backpackmod.backpack." + backpackItem.getColor().getName());
+        }
+
+        // Fallback
+        return Text.translatable("container.backpackmod.backpack");
     }
 }
