@@ -8,8 +8,8 @@
     "BennyBoops"
   ],
   "contact": {
-    "homepage": "https://modrinth.com/mod/pocket-repose",
-    "sources": "https://github.com/BennyBoops/PocketRepose"
+    "homepage": "https://modrinth.com/mod/basic-backpack",
+    "sources": "https://github.com/BennyBoops/BackpackMod"
   },
   "license": "MIT",
   "icon": "assets/backpackmod/icon.png",
@@ -25,8 +25,8 @@
 
 
   "depends": {
-    "fabricloader": ">=0.16.9",
-    "minecraft": "~1.21.1",
+    "fabricloader": ">=0.14.21",
+    "minecraft": "~1.20.1",
     "java": ">=17",
     "fabric-api": "*"
   },

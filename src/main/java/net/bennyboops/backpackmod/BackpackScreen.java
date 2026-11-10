@@ -9,7 +9,7 @@ import net.minecraft.util.Identifier;
 
 public class BackpackScreen extends HandledScreen<BackpackScreenHandler> {
     private static final Identifier TEXTURE =
-            Identifier.of("minecraft", "textures/gui/container/shulker_box.png");
+            new Identifier("minecraft", "textures/gui/container/shulker_box.png");
 
     public BackpackScreen(BackpackScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);

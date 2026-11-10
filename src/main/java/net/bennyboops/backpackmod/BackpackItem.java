@@ -1,16 +1,12 @@
 package net.bennyboops.backpackmod;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ContainerComponent;
+import net.minecraft.client.item.TooltipContext;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Equipment;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
@@ -19,6 +15,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -42,42 +39,35 @@ public class BackpackItem extends Item implements Equipment {
             world.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ITEM_BUNDLE_INSERT, SoundCategory.PLAYERS, 1.00F, 0.75F);
 
-            player.openHandledScreen(createScreenHandlerFactory(stack));
+            int slot = hand == Hand.MAIN_HAND ? player.getInventory().selectedSlot : PlayerInventory.OFF_HAND_SLOT;
+            BackpackMod.openBackpack(player, slot);
         }
 
         return TypedActionResult.success(stack, world.isClient());
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-        super.appendTooltip(stack, context, tooltip, type);
+    public void appendTooltip(ItemStack stack, @Nullable World world, List<Text> tooltip, TooltipContext context) {
+        super.appendTooltip(stack, world, tooltip, context);
 
-        ContainerComponent container = stack.getOrDefault(DataComponentTypes.CONTAINER, ContainerComponent.DEFAULT);
+        int occupied = 0;
+        int shown = 0;
 
-        if (!container.stream().allMatch(ItemStack::isEmpty)) {
-            int occupied = 0;
-
-            for (ItemStack item : container.stream().toList()) {
-                if (!item.isEmpty()) {
-                    occupied++;
-                }
-            }
-
-            int shown = 0;
-            for (ItemStack item : container.stream().toList()) {
-                if (!item.isEmpty() && shown < 4) {
-                    Text itemText = Text.literal("  ")
+        for (ItemStack item : BackpackStorage.load(stack)) {
+            if (!item.isEmpty()) {
+                occupied++;
+                if (shown < 4) {
+                    tooltip.add(Text.literal("  ")
                             .append(item.getName())
                             .append(" x" + item.getCount())
-                            .formatted(Formatting.GRAY);
-                    tooltip.add(itemText);
+                            .formatted(Formatting.GRAY));
                     shown++;
                 }
             }
+        }
 
-            if (occupied > 4) {
-                tooltip.add(Text.translatable("container.shulkerBox.more", occupied - 4).formatted(Formatting.ITALIC, Formatting.GRAY));
-            }
+        if (occupied > 4) {
+            tooltip.add(Text.translatable("container.shulkerBox.more", occupied - 4).formatted(Formatting.ITALIC, Formatting.GRAY));
         }
     }
 
@@ -92,20 +82,12 @@ public class BackpackItem extends Item implements Equipment {
     }
 
     @Override
-    public RegistryEntry<SoundEvent> getEquipSound() {
+    public SoundEvent getEquipSound() {
         return SoundEvents.ITEM_ARMOR_EQUIP_LEATHER;
     }
 
-    private NamedScreenHandlerFactory createScreenHandlerFactory(ItemStack stack) {
-        return new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, player) ->
-                        new BackpackScreenHandler(syncId, playerInventory, stack),
-                getDisplayName(stack)
-        );
-    }
-
     public static Text getDisplayName(ItemStack stack) {
-        if (stack.contains(DataComponentTypes.CUSTOM_NAME)) {
+        if (stack.hasCustomName()) {
             return stack.getName();
         }
 

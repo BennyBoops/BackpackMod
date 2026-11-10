@@ -1,39 +1,38 @@
 package net.bennyboops.backpackmod;
 
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.google.gson.JsonObject;
+import net.minecraft.inventory.RecipeInputInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.RecipeSerializer;
 import net.minecraft.recipe.SpecialCraftingRecipe;
 import net.minecraft.recipe.book.CraftingRecipeCategory;
-import net.minecraft.recipe.input.CraftingRecipeInput;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.JsonHelper;
 import net.minecraft.world.World;
 
 public class BackpackDyeRecipe extends SpecialCraftingRecipe {
     private final Ingredient dye;
     private final Item result;
 
-    public BackpackDyeRecipe(CraftingRecipeCategory category, Ingredient dye, Item result) {
-        super(category);
+    public BackpackDyeRecipe(Identifier id, CraftingRecipeCategory category, Ingredient dye, Item result) {
+        super(id, category);
         this.dye = dye;
         this.result = result;
     }
 
     @Override
-    public boolean matches(CraftingRecipeInput input, World world) {
+    public boolean matches(RecipeInputInventory input, World world) {
         ItemStack backpackStack = ItemStack.EMPTY;
         ItemStack dyeStack = ItemStack.EMPTY;
         int itemCount = 0;
 
-        for (int i = 0; i < input.getSize(); i++) {
-            ItemStack stack = input.getStackInSlot(i);
+        for (int i = 0; i < input.size(); i++) {
+            ItemStack stack = input.getStack(i);
             if (!stack.isEmpty()) {
                 itemCount++;
                 if (BackpackMod.isBackpack(stack)) {
@@ -48,11 +47,11 @@ public class BackpackDyeRecipe extends SpecialCraftingRecipe {
     }
 
     @Override
-    public ItemStack craft(CraftingRecipeInput input, RegistryWrapper.WrapperLookup lookup) {
+    public ItemStack craft(RecipeInputInventory input, DynamicRegistryManager registryManager) {
         ItemStack backpackStack = ItemStack.EMPTY;
 
-        for (int i = 0; i < input.getSize(); i++) {
-            ItemStack stack = input.getStackInSlot(i);
+        for (int i = 0; i < input.size(); i++) {
+            ItemStack stack = input.getStack(i);
             if (BackpackMod.isBackpack(stack)) {
                 backpackStack = stack;
                 break;
@@ -65,8 +64,10 @@ public class BackpackDyeRecipe extends SpecialCraftingRecipe {
 
         ItemStack resultStack = new ItemStack(this.result);
 
-        // Copy all components from the old backpack to preserve contents
-        resultStack.applyComponentsFrom(backpackStack.getComponents());
+        // Copy the NBT from the old backpack to preserve contents and name
+        if (backpackStack.hasNbt()) {
+            resultStack.setNbt(backpackStack.getNbt().copy());
+        }
 
         return resultStack;
     }
@@ -82,33 +83,27 @@ public class BackpackDyeRecipe extends SpecialCraftingRecipe {
     }
 
     public static class Serializer implements RecipeSerializer<BackpackDyeRecipe> {
-        public static final MapCodec<BackpackDyeRecipe> CODEC = RecordCodecBuilder.mapCodec(instance ->
-                instance.group(
-                        CraftingRecipeCategory.CODEC.fieldOf("category").orElse(CraftingRecipeCategory.MISC).forGetter(recipe -> CraftingRecipeCategory.MISC),
-                        Ingredient.DISALLOW_EMPTY_CODEC.fieldOf("dye").forGetter(recipe -> recipe.dye),
-                        Registries.ITEM.getCodec().fieldOf("result").forGetter(recipe -> recipe.result)
-                ).apply(instance, BackpackDyeRecipe::new)
-        );
-
-        public static final PacketCodec<RegistryByteBuf, BackpackDyeRecipe> PACKET_CODEC =
-                PacketCodec.tuple(
-                        CraftingRecipeCategory.PACKET_CODEC,
-                        recipe -> CraftingRecipeCategory.MISC,
-                        Ingredient.PACKET_CODEC,
-                        recipe -> recipe.dye,
-                        PacketCodecs.registryEntry(Registries.ITEM.getKey()),
-                        recipe -> Registries.ITEM.getEntry(recipe.result),
-                        (category, dye, result) -> new BackpackDyeRecipe(category, dye, result.value())
-                );
-
         @Override
-        public MapCodec<BackpackDyeRecipe> codec() {
-            return CODEC;
+        public BackpackDyeRecipe read(Identifier id, JsonObject json) {
+            CraftingRecipeCategory category = CraftingRecipeCategory.CODEC.byId(JsonHelper.getString(json, "category", null), CraftingRecipeCategory.MISC);
+            Ingredient dye = Ingredient.fromJson(JsonHelper.getElement(json, "dye"));
+            Item result = Registries.ITEM.get(new Identifier(JsonHelper.getString(json, "result")));
+            return new BackpackDyeRecipe(id, category, dye, result);
         }
 
         @Override
-        public PacketCodec<RegistryByteBuf, BackpackDyeRecipe> packetCodec() {
-            return PACKET_CODEC;
+        public BackpackDyeRecipe read(Identifier id, PacketByteBuf buf) {
+            CraftingRecipeCategory category = buf.readEnumConstant(CraftingRecipeCategory.class);
+            Ingredient dye = Ingredient.fromPacket(buf);
+            Item result = Registries.ITEM.get(buf.readIdentifier());
+            return new BackpackDyeRecipe(id, category, dye, result);
+        }
+
+        @Override
+        public void write(PacketByteBuf buf, BackpackDyeRecipe recipe) {
+            buf.writeEnumConstant(recipe.getCategory());
+            recipe.dye.write(buf);
+            buf.writeIdentifier(Registries.ITEM.getId(recipe.result));
         }
     }
 }
