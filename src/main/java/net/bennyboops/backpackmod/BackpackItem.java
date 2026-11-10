@@ -4,13 +4,12 @@ import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.ContainerComponent;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Equipment;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.tooltip.TooltipType;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
@@ -42,7 +41,8 @@ public class BackpackItem extends Item implements Equipment {
             world.playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ITEM_BUNDLE_INSERT, SoundCategory.PLAYERS, 1.00F, 0.75F);
 
-            player.openHandledScreen(createScreenHandlerFactory(stack));
+            int slot = hand == Hand.MAIN_HAND ? player.getInventory().selectedSlot : PlayerInventory.OFF_HAND_SLOT;
+            BackpackMod.openBackpack(player, slot);
         }
 
         return TypedActionResult.success(stack, world.isClient());
@@ -94,14 +94,6 @@ public class BackpackItem extends Item implements Equipment {
     @Override
     public RegistryEntry<SoundEvent> getEquipSound() {
         return SoundEvents.ITEM_ARMOR_EQUIP_LEATHER;
-    }
-
-    private NamedScreenHandlerFactory createScreenHandlerFactory(ItemStack stack) {
-        return new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, player) ->
-                        new BackpackScreenHandler(syncId, playerInventory, stack),
-                getDisplayName(stack)
-        );
     }
 
     public static Text getDisplayName(ItemStack stack) {
