@@ -1,32 +1,30 @@
 package net.bennyboops.backpackmod;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.ContainerComponent;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Equipment;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.tooltip.TooltipType;
-import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.screen.NamedScreenHandlerFactory;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvent;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.world.World;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Equipable;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
+
+import javax.annotation.Nullable;
 
 import java.util.List;
 
-public class BackpackItem extends Item implements Equipment {
+public class BackpackItem extends Item implements Equipable {
     private final BackpackColor color;
 
-    public BackpackItem(Settings settings, BackpackColor color) {
-        super(settings);
+    public BackpackItem(Properties properties, BackpackColor color) {
+        super(properties);
         this.color = color;
     }
 
@@ -35,85 +33,70 @@ public class BackpackItem extends Item implements Equipment {
     }
 
     @Override
-    public TypedActionResult<ItemStack> use(World world, PlayerEntity player, Hand hand) {
-        ItemStack stack = player.getStackInHand(hand);
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
 
-        if (!world.isClient) {
-            world.playSound(null, player.getX(), player.getY(), player.getZ(),
-                    SoundEvents.ITEM_BUNDLE_INSERT, SoundCategory.PLAYERS, 1.00F, 0.75F);
+        if (!level.isClientSide) {
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.BUNDLE_INSERT, SoundSource.PLAYERS, 1.00F, 0.75F);
 
-            player.openHandledScreen(createScreenHandlerFactory(stack));
+            int slot = hand == InteractionHand.MAIN_HAND ? player.getInventory().selected : Inventory.SLOT_OFFHAND;
+            BackpackMod.openBackpack(player, slot);
         }
 
-        return TypedActionResult.success(stack, world.isClient());
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
     @Override
-    public void appendTooltip(ItemStack stack, TooltipContext context, List<Text> tooltip, TooltipType type) {
-        super.appendTooltip(stack, context, tooltip, type);
+    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+        super.appendHoverText(stack, level, tooltip, flag);
 
-        ContainerComponent container = stack.getOrDefault(DataComponentTypes.CONTAINER, ContainerComponent.DEFAULT);
+        int occupied = 0;
+        int shown = 0;
 
-        if (!container.stream().allMatch(ItemStack::isEmpty)) {
-            int occupied = 0;
-
-            for (ItemStack item : container.stream().toList()) {
-                if (!item.isEmpty()) {
-                    occupied++;
-                }
-            }
-
-            int shown = 0;
-            for (ItemStack item : container.stream().toList()) {
-                if (!item.isEmpty() && shown < 4) {
-                    Text itemText = Text.literal("  ")
-                            .append(item.getName())
+        for (ItemStack item : BackpackStorage.load(stack)) {
+            if (!item.isEmpty()) {
+                occupied++;
+                if (shown < 4) {
+                    tooltip.add(Component.literal("  ")
+                            .append(item.getHoverName())
                             .append(" x" + item.getCount())
-                            .formatted(Formatting.GRAY);
-                    tooltip.add(itemText);
+                            .withStyle(ChatFormatting.GRAY));
                     shown++;
                 }
             }
+        }
 
-            if (occupied > 4) {
-                tooltip.add(Text.translatable("container.shulkerBox.more", occupied - 4).formatted(Formatting.ITALIC, Formatting.GRAY));
-            }
+        if (occupied > 4) {
+            tooltip.add(Component.translatable("container.shulkerBox.more", occupied - 4).withStyle(ChatFormatting.ITALIC, ChatFormatting.GRAY));
         }
     }
 
     @Override
-    public boolean canBeNested() {
+    public boolean canFitInsideContainerItems() {
         return false;
     }
 
     @Override
-    public EquipmentSlot getSlotType() {
+    public EquipmentSlot getEquipmentSlot() {
         return EquipmentSlot.CHEST;
     }
 
     @Override
-    public RegistryEntry<SoundEvent> getEquipSound() {
-        return SoundEvents.ITEM_ARMOR_EQUIP_LEATHER;
+    public SoundEvent getEquipSound() {
+        return SoundEvents.ARMOR_EQUIP_LEATHER;
     }
 
-    private NamedScreenHandlerFactory createScreenHandlerFactory(ItemStack stack) {
-        return new SimpleNamedScreenHandlerFactory(
-                (syncId, playerInventory, player) ->
-                        new BackpackScreenHandler(syncId, playerInventory, stack),
-                getDisplayName(stack)
-        );
-    }
-
-    public static Text getDisplayName(ItemStack stack) {
-        if (stack.contains(DataComponentTypes.CUSTOM_NAME)) {
-            return stack.getName();
+    public static Component getDisplayName(ItemStack stack) {
+        if (stack.hasCustomHoverName()) {
+            return stack.getHoverName();
         }
 
         if (stack.getItem() instanceof BackpackItem backpackItem) {
-            return Text.translatable("container.backpackmod.backpack." + backpackItem.getColor().getName());
+            return Component.translatable("container.backpackmod.backpack." + backpackItem.getColor().getName());
         }
 
         // Fallback
-        return Text.translatable("container.backpackmod.backpack");
+        return Component.translatable("container.backpackmod.backpack");
     }
 }

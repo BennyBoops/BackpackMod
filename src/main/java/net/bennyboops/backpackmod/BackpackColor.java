@@ -1,8 +1,8 @@
 package net.bennyboops.backpackmod;
 
-import net.minecraft.util.StringIdentifiable;
+import net.minecraft.util.StringRepresentable;
 
-public enum BackpackColor implements StringIdentifiable {
+public enum BackpackColor implements StringRepresentable {
     BROWN("brown", 0x8B4513),
     BLACK("black", 0x1D1D21),
     RED("red", 0xB02E26),
@@ -37,7 +37,7 @@ public enum BackpackColor implements StringIdentifiable {
     }
 
     @Override
-    public String asString() {
+    public String getSerializedName() {
         return name;
     }
 

@@ -1,43 +1,41 @@
 package net.bennyboops.backpackmod;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
 
-public class BackpackScreen extends HandledScreen<BackpackScreenHandler> {
-    private static final Identifier TEXTURE =
-            Identifier.of("minecraft", "textures/gui/container/shulker_box.png");
+public class BackpackScreen extends AbstractContainerScreen<BackpackMenu> {
+    private static final ResourceLocation TEXTURE =
+            new ResourceLocation("textures/gui/container/shulker_box.png");
 
-    public BackpackScreen(BackpackScreenHandler handler, PlayerInventory inventory, Text title) {
-        super(handler, inventory, title);
+    public BackpackScreen(BackpackMenu menu, Inventory inventory, Component title) {
+        super(menu, inventory, title);
 
         // 3 rows of inventory
-        this.backgroundHeight = 114 + 3 * 18;
-        this.playerInventoryTitleY = this.backgroundHeight - 95;
+        this.imageHeight = 114 + 3 * 18;
+        this.inventoryLabelY = this.imageHeight - 95;
     }
 
     @Override
-    public void drawBackground(DrawContext context, float delta, int mouseX, int mouseY) {
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        int x = (this.width - this.backgroundWidth) / 2;
-        int y = (this.height - this.backgroundHeight) / 2;
-        context.drawTexture(TEXTURE, x, y, 0, 0, this.backgroundWidth, this.backgroundHeight);
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        int x = (this.width - this.imageWidth) / 2;
+        int y = (this.height - this.imageHeight) / 2;
+        graphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        super.render(context, mouseX, mouseY, delta);
-        this.drawMouseoverTooltip(context, mouseX, mouseY);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        this.renderTooltip(graphics, mouseX, mouseY);
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         // Close when the backpack key is pressed again
-        if (BackpackModClient.OPEN_BACKPACK_KEY.matchesKey(keyCode, scanCode)) {
-            this.close();
+        if (BackpackModClient.OPEN_BACKPACK_KEY.matches(keyCode, scanCode)) {
+            this.onClose();
             return true;
         }
 
